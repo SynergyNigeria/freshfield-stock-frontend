@@ -1,0 +1,17 @@
+{
+  "name": "Freshfield",
+  "short_name": "Freshfield",
+  "description": "Trade US stocks with confidence",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#06d001",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
