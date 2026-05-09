@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, SlidersHorizontal, X, TrendingUp, TrendingDown, BarChart2 } from "lucide-react";
-import { STOCKS } from "@/lib/mockData";
+import { stocksApi } from "@/lib/api";
+import { adaptStock } from "@/lib/adapters";
+import { Stock } from "@/types";
 import { cn } from "@/lib/utils";
 import StockCard from "@/components/stocks/StockCard";
 import Card from "@/components/ui/Card";
 
-const SECTORS = ["All", "Technology", "Financials", "Healthcare", "Consumer Discretionary", "Consumer Staples", "Communication Services", "Energy"];
+const SECTORS = ["All", "Technology", "Financial Services", "Healthcare", "Consumer Cyclical", "Consumer Defensive", "Communication Services", "Energy"];
 const FILTERS = [
   { label: "All", value: "all" },
   { label: "Gainers", value: "gainers" },
@@ -16,13 +18,18 @@ const FILTERS = [
 ];
 
 export default function MarketsContent() {
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("All");
   const [filter, setFilter] = useState("all");
   const [showSectors, setShowSectors] = useState(false);
 
+  useEffect(() => {
+    stocksApi.list().then((res) => setStocks(res.map(adaptStock))).catch(() => {});
+  }, []);
+
   const filtered = useMemo(() => {
-    let list = [...STOCKS];
+    let list = [...stocks];
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -41,10 +48,10 @@ export default function MarketsContent() {
     else if (filter === "losers") list = list.filter((s) => s.change < 0).sort((a, b) => a.changePercent - b.changePercent);
 
     return list;
-  }, [search, sector, filter]);
+  }, [stocks, search, sector, filter]);
 
-  const gainersCount = STOCKS.filter((s) => s.change > 0).length;
-  const losersCount = STOCKS.filter((s) => s.change < 0).length;
+  const gainersCount = stocks.filter((s) => s.change > 0).length;
+  const losersCount = stocks.filter((s) => s.change < 0).length;
 
   return (
     <div className="space-y-4">
@@ -73,7 +80,7 @@ export default function MarketsContent() {
           <p className="text-xs text-gray-400 mb-1">Listed</p>
           <p className="text-lg font-bold text-gray-900 flex items-center justify-center gap-1">
             <BarChart2 className="w-4 h-4 text-gray-500" />
-            {STOCKS.length}
+            {stocks.length}
           </p>
         </div>
       </div>

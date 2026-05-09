@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { TrendingUp, TrendingDown, ArrowRight, Wallet, BarChart3, Activity } from "lucide-react";
-import { STOCKS, MOCK_HOLDINGS, WALLET_BALANCE } from "@/lib/mockData";
+import { stocksApi, walletApi, ordersApi } from "@/lib/api";
+import { adaptStock, adaptHolding } from "@/lib/adapters";
+import { Stock, Holding } from "@/types";
 import { formatCurrency, formatPercent, formatChange, cn } from "@/lib/utils";
 import StockCard from "@/components/stocks/StockCard";
 import Card from "@/components/ui/Card";
@@ -13,36 +15,50 @@ import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [portfolioSummary, setPortfolioSummary] = useState({ total_value: 0, total_cost: 0, total_pnl: 0, total_pnl_percent: 0 });
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1400);
-    return () => clearTimeout(t);
+    async function fetchAll() {
+      try {
+        const [stocksRes, walletRes, portfolioRes] = await Promise.all([
+          stocksApi.list(),
+          walletApi.get(),
+          ordersApi.portfolio(),
+        ]);
+        setStocks(stocksRes.map(adaptStock));
+        setWalletBalance(parseFloat(walletRes.balance));
+        setHoldings(portfolioRes.holdings.map(adaptHolding));
+        setPortfolioSummary(portfolioRes.summary);
+      } catch {
+        // Keep defaults on error
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAll();
   }, []);
 
   if (loading) return <DashboardSkeleton />;
-  const topGainers = [...STOCKS]
+
+  const topGainers = [...stocks]
     .filter((s) => s.change > 0)
     .sort((a, b) => b.changePercent - a.changePercent)
     .slice(0, 3);
 
-  const topLosers = [...STOCKS]
+  const topLosers = [...stocks]
     .filter((s) => s.change < 0)
     .sort((a, b) => a.changePercent - b.changePercent)
     .slice(0, 3);
 
-  const totalPortfolioValue = MOCK_HOLDINGS.reduce(
-    (acc, h) => acc + h.shares * h.currentPrice,
-    0
-  );
-  const totalCost = MOCK_HOLDINGS.reduce(
-    (acc, h) => acc + h.shares * h.avgCost,
-    0
-  );
-  const totalPnL = totalPortfolioValue - totalCost;
-  const totalPnLPct = (totalPnL / totalCost) * 100;
+  const totalPortfolioValue = portfolioSummary.total_value;
+  const totalPnL = portfolioSummary.total_pnl;
+  const totalPnLPct = portfolioSummary.total_pnl_percent;
   const isPortfolioPositive = totalPnL >= 0;
 
-  const watchlist = STOCKS.slice(0, 6);
+  const watchlist = stocks.slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -61,7 +77,7 @@ export default function DashboardContent() {
               </span>
             </Link>
           </div>
-          <p className="text-4xl font-extrabold text-white tracking-tight">{formatCurrency(WALLET_BALANCE)}</p>
+          <p className="text-4xl font-extrabold text-white tracking-tight">{formatCurrency(walletBalance)}</p>
           <p className="text-xs text-white/50 mt-1">Available to invest</p>
         </div>
 
@@ -161,7 +177,7 @@ export default function DashboardContent() {
       </div>
 
       {/* Holdings preview */}
-      {MOCK_HOLDINGS.length > 0 && (
+      {holdings.length > 0 && (
         <Card padding="none">
           <div className="px-4 pt-4 pb-2 flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900">My Holdings</h2>
@@ -170,7 +186,7 @@ export default function DashboardContent() {
             </Link>
           </div>
           <div className="divide-y divide-gray-50">
-            {MOCK_HOLDINGS.map((holding) => {
+            {holdings.map((holding) => {
               const value = holding.shares * holding.currentPrice;
               const cost = holding.shares * holding.avgCost;
               const pnl = value - cost;

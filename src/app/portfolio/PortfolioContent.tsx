@@ -11,6 +11,9 @@ import {
   PieChart,
 } from "lucide-react";
 import { MOCK_HOLDINGS, WALLET_BALANCE } from "@/lib/mockData";
+import { ordersApi, walletApi } from "@/lib/api";
+import { adaptHolding } from "@/lib/adapters";
+import { Holding } from "@/types";
 import { formatCurrency, formatPercent, formatChange, cn } from "@/lib/utils";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -26,8 +29,18 @@ const CHART_COLORS = ["#06d001", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"];
 
 export default function PortfolioContent() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const holdings = MOCK_HOLDINGS;
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [summary, setSummary] = useState({ total_value: 0, total_cost: 0, total_pnl: 0, total_pnl_percent: 0 });
+
+  useEffect(() => {
+    setMounted(true);
+    ordersApi.portfolio().then((p) => {
+      setHoldings(p.holdings.map(adaptHolding));
+      setSummary(p.summary);
+    }).catch(() => {});
+    walletApi.get().then((w) => setWalletBalance(parseFloat(w.balance))).catch(() => {});
+  }, []);
 
   const positions = holdings.map((h) => {
     const value = h.shares * h.currentPrice;
@@ -37,11 +50,11 @@ export default function PortfolioContent() {
     return { ...h, value, cost, pnl, pnlPct };
   });
 
-  const totalValue = positions.reduce((a, p) => a + p.value, 0);
-  const totalCost = positions.reduce((a, p) => a + p.cost, 0);
-  const totalPnL = totalValue - totalCost;
-  const totalPnLPct = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
-  const totalAssets = totalValue + WALLET_BALANCE;
+  const totalValue = summary.total_value;
+  const totalCost = summary.total_cost;
+  const totalPnL = summary.total_pnl;
+  const totalPnLPct = summary.total_pnl_percent;
+  const totalAssets = totalValue + walletBalance;
 
   const isPositive = totalPnL >= 0;
 
@@ -57,7 +70,7 @@ export default function PortfolioContent() {
 
   const pieData = [
     ...sectorData,
-    { name: "Cash", value: parseFloat(WALLET_BALANCE.toFixed(2)) },
+    { name: "Cash", value: parseFloat(walletBalance.toFixed(2)) },
   ];
 
   return (
@@ -104,7 +117,7 @@ export default function PortfolioContent() {
         </Card>
         <Card>
           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">Cash</p>
-          <p className="text-base font-bold text-gray-900">{formatCurrency(WALLET_BALANCE)}</p>
+          <p className="text-base font-bold text-gray-900">{formatCurrency(walletBalance)}</p>
         </Card>
       </div>
 

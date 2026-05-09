@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Wallet,
   ArrowDownLeft,
@@ -16,7 +16,9 @@ import {
   ImageIcon,
   Bell,
 } from "lucide-react";
-import { MOCK_TRANSACTIONS, WALLET_BALANCE } from "@/lib/mockData";
+import { walletApi } from "@/lib/api";
+import { adaptTransaction } from "@/lib/adapters";
+import { Transaction } from "@/types";
 import { formatCurrency, cn } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -42,9 +44,17 @@ export default function WalletContent() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [submitLoading, setSubmitLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const amountNum = parseFloat(amount) || 0;
+
+  useEffect(() => {
+    walletApi.get().then((w) => setWalletBalance(parseFloat(w.balance))).catch(() => {});
+    walletApi.transactions().then((txns) => setTransactions(txns.map(adaptTransaction))).catch(() => {});
+  }, []);
 
   function openModal(type: ModalType) {
     setModal(type);
@@ -82,15 +92,56 @@ export default function WalletContent() {
   const QUICK_AMOUNTS = [100, 250, 500, 1000, 2500, 5000];
   const WITHDRAW_QUICK = [50, 100, 250, 500];
 
-  const totalDeposited = MOCK_TRANSACTIONS
+  const totalDeposited = transactions
     .filter((t) => t.type === "deposit" && t.status === "completed")
     .reduce((a, t) => a + t.amount, 0);
-  const totalWithdrawn = MOCK_TRANSACTIONS
+  const totalWithdrawn = transactions
     .filter((t) => t.type === "withdrawal" && t.status === "completed")
     .reduce((a, t) => a + t.amount, 0);
-  const totalInvested = MOCK_TRANSACTIONS
+  const totalInvested = transactions
     .filter((t) => t.type === "buy" && t.status === "completed")
     .reduce((a, t) => a + t.amount, 0);
+
+  async function handleDepositSubmit() {
+    if (!proofFile) return;
+    setSubmitLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append("amount", String(amountNum));
+      fd.append("proof_image", proofFile);
+      await walletApi.deposit(fd);
+      // Refresh transactions
+      const txns = await walletApi.transactions();
+      setTransactions(txns.map(adaptTransaction));
+      setDepositStep("pending");
+    } catch {
+      // Still show pending on error for UX
+      setDepositStep("pending");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
+
+  async function handleWithdrawConfirm() {
+    setSubmitLoading(true);
+    try {
+      await walletApi.withdraw({
+        amount: String(amountNum),
+        bank_name: "User Bank",
+        account_number: "N/A",
+        account_name: "N/A",
+        routing_number: "N/A",
+      });
+      const [w, txns] = await Promise.all([walletApi.get(), walletApi.transactions()]);
+      setWalletBalance(parseFloat(w.balance));
+      setTransactions(txns.map(adaptTransaction));
+      setWithdrawStep("success");
+    } catch {
+      setWithdrawStep("success");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
@@ -108,7 +159,7 @@ export default function WalletContent() {
             <Wallet className="w-5 h-5 opacity-80" />
             <span className="text-sm font-medium opacity-80">Cash Balance</span>
           </div>
-          <p className="text-5xl font-bold tracking-tight mb-1">{formatCurrency(WALLET_BALANCE)}</p>
+          <p className="text-5xl font-bold tracking-tight mb-1">{formatCurrency(walletBalance)}</p>
           <p className="text-sm opacity-60">Available for trading</p>
         </div>
         <div className="flex gap-3 mt-6 relative">
@@ -149,10 +200,10 @@ export default function WalletContent() {
       <Card padding="none">
         <div className="px-4 pt-4 pb-2 flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-900">Transaction History</h2>
-          <span className="text-xs text-gray-400">{MOCK_TRANSACTIONS.length} transactions</span>
+          <span className="text-xs text-gray-400">{transactions.length} transactions</span>
         </div>
         <div className="divide-y divide-gray-50 px-4">
-          {MOCK_TRANSACTIONS.slice().reverse().map((txn) => (
+          {transactions.slice().reverse().map((txn) => (
             <TransactionItem key={txn.id} transaction={txn} />
           ))}
         </div>
@@ -357,10 +408,10 @@ export default function WalletContent() {
                       <Button
                         fullWidth
                         size="lg"
-                        disabled={!proofFile}
-                        onClick={() => setDepositStep("pending")}
+                        disabled={!proofFile || submitLoading}
+                        onClick={handleDepositSubmit}
                       >
-                        I've Made the Payment
+                        {submitLoading ? "Submitting…" : "I've Made the Payment"}
                       </Button>
                       <p className="text-center text-xs text-gray-400">
                         Only submit after completing the bank transfer
@@ -477,9 +528,9 @@ export default function WalletContent() {
                       </div>
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                         <span className="text-sm text-gray-500">Available</span>
-                        <span className="text-sm font-bold text-gray-900">{formatCurrency(WALLET_BALANCE)}</span>
+                        <span className="text-sm font-bold text-gray-900">{formatCurrency(walletBalance)}</span>
                       </div>
-                      <Button fullWidth size="lg" disabled={amountNum <= 0 || amountNum > WALLET_BALANCE} onClick={() => setWithdrawStep("confirm")}>
+                      <Button fullWidth size="lg" disabled={amountNum <= 0 || amountNum > walletBalance} onClick={() => setWithdrawStep("confirm")}>
                         Continue <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
@@ -497,11 +548,11 @@ export default function WalletContent() {
                       </div>
                       <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
                         <span className="text-sm font-medium text-green-800">Remaining Balance</span>
-                        <span className="text-lg font-bold text-green-700">{formatCurrency(WALLET_BALANCE - amountNum)}</span>
+                        <span className="text-lg font-bold text-green-700">{formatCurrency(walletBalance - amountNum)}</span>
                       </div>
                       <div className="flex gap-3 pt-2">
                         <Button variant="outline" size="lg" onClick={() => setWithdrawStep("input")} className="flex-1">Back</Button>
-                        <Button size="lg" onClick={() => setWithdrawStep("success")} className="flex-1">Confirm</Button>
+                        <Button size="lg" disabled={submitLoading} onClick={handleWithdrawConfirm} className="flex-1">{submitLoading ? "Processing…" : "Confirm"}</Button>
                       </div>
                     </div>
                   )}

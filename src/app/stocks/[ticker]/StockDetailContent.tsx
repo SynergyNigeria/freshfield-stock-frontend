@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -15,7 +15,10 @@ import {
   X,
   CheckCircle2,
 } from "lucide-react";
-import { STOCKS, generateChartData } from "@/lib/mockData";
+import { stocksApi, ordersApi, APIError } from "@/lib/api";
+import { adaptStock } from "@/lib/adapters";
+import { generateChartData } from "@/lib/mockData";
+import { Stock } from "@/types";
 import {
   formatCurrency,
   formatPercent,
@@ -34,13 +37,19 @@ interface StockDetailContentProps {
 type OrderType = "buy" | "sell";
 
 export default function StockDetailContent({ ticker }: StockDetailContentProps) {
-  const stock = STOCKS.find((s) => s.ticker === ticker);
+  const [stock, setStock] = useState<Stock | null>(null);
   const [orderType, setOrderType] = useState<OrderType>("buy");
   const [shares, setShares] = useState("");
   const [showOrderPanel, setShowOrderPanel] = useState(false);
   const [watchlisted, setWatchlisted] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successDetails, setSuccessDetails] = useState<{ type: OrderType; shares: number; total: number } | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [orderLoading, setOrderLoading] = useState(false);
+
+  useEffect(() => {
+    stocksApi.detail(ticker).then((s) => setStock(adaptStock(s))).catch(() => {});
+  }, [ticker]);
 
   if (!stock) return null;
 
@@ -49,6 +58,29 @@ export default function StockDetailContent({ ticker }: StockDetailContentProps) 
 
   const sharesNum = parseFloat(shares) || 0;
   const orderTotal = sharesNum * stock.price;
+
+  async function handleConfirmOrder() {
+    if (sharesNum <= 0) return;
+    setOrderLoading(true);
+    setOrderError(null);
+    try {
+      const result = await ordersApi.place(stock!.ticker, orderType, sharesNum);
+      const total = parseFloat(result.total);
+      setShowOrderPanel(false);
+      setShares("");
+      setSuccessDetails({ type: orderType, shares: sharesNum, total });
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 4000);
+    } catch (err) {
+      if (err instanceof APIError) {
+        setOrderError(err.message);
+      } else {
+        setOrderError("Order failed. Please try again.");
+      }
+    } finally {
+      setOrderLoading(false);
+    }
+  }
 
   const statsRows = [
     { label: "Open", value: formatCurrency(stock.price - stock.change) },
@@ -142,7 +174,7 @@ export default function StockDetailContent({ ticker }: StockDetailContentProps) 
           fullWidth
           size="lg"
           icon={ShoppingCart}
-          onClick={() => { setOrderType("buy"); setShowOrderPanel(true); }}
+          onClick={() => { setOrderType("buy"); setOrderError(null); setShowOrderPanel(true); }}
         >
           Buy {stock.ticker}
         </Button>
@@ -151,7 +183,7 @@ export default function StockDetailContent({ ticker }: StockDetailContentProps) 
           size="lg"
           variant="outline"
           icon={Package}
-          onClick={() => { setOrderType("sell"); setShowOrderPanel(true); }}
+          onClick={() => { setOrderType("sell"); setOrderError(null); setShowOrderPanel(true); }}
         >
           Sell {stock.ticker}
         </Button>
@@ -201,7 +233,7 @@ export default function StockDetailContent({ ticker }: StockDetailContentProps) 
               {(["buy", "sell"] as OrderType[]).map((type) => (
                 <button
                   key={type}
-                  onClick={() => setOrderType(type)}
+                  onClick={() => { setOrderType(type); setOrderError(null); }}
                   className={cn(
                     "flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all",
                     orderType === type
@@ -239,25 +271,30 @@ export default function StockDetailContent({ ticker }: StockDetailContentProps) 
             </div>
 
             {/* Order total */}
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl mb-5">
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl mb-4">
               <span className="text-sm font-medium text-green-800">Est. Total</span>
               <span className="text-lg font-bold text-green-700">{formatCurrency(orderTotal)}</span>
             </div>
+
+            {/* Error */}
+            {orderError && (
+              <p className="text-red-500 text-sm mb-3 text-center rounded-xl py-2 px-3 bg-red-50">
+                {orderError}
+              </p>
+            )}
 
             <Button
               fullWidth
               size="lg"
               variant={orderType === "buy" ? "primary" : "danger"}
-              onClick={() => {
-                setSuccessDetails({ type: orderType, shares: sharesNum, total: orderTotal });
-                setShowOrderPanel(false);
-                setShares("");
-                setShowSuccess(true);
-                setTimeout(() => setShowSuccess(false), 4000);
-              }}
-              disabled={sharesNum <= 0}
+              onClick={handleConfirmOrder}
+              disabled={sharesNum <= 0 || orderLoading}
             >
-              {orderType === "buy" ? "Confirm Purchase" : "Confirm Sale"}
+              {orderLoading
+                ? "Processing…"
+                : orderType === "buy"
+                ? "Confirm Purchase"
+                : "Confirm Sale"}
             </Button>
 
             <p className="text-center text-xs text-gray-400 mt-3">
@@ -314,4 +351,5 @@ export default function StockDetailContent({ ticker }: StockDetailContentProps) 
       )}
     </div>
   );
+
 }
