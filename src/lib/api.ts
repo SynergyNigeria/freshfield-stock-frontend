@@ -268,3 +268,59 @@ export const ordersApi = {
   history: () => api.get<unknown[]>("/orders/history/"),
   portfolio: () => api.get<APIPortfolio>("/orders/portfolio/"),
 };
+
+// ── Admin types ──────────────────────────────────────────────────────────────
+export interface AdminUserSummary {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  country: string;
+  phone: string;
+  email_verified: boolean;
+  is_active: boolean;
+  date_joined: string;
+  wallet_balance: string;
+  portfolio_value: string;
+  holdings_count: number;
+}
+
+export interface AdminHolding {
+  id: number;
+  stock: { id: number; ticker: string; name: string; price: string };
+  shares: string;
+  avg_cost: string;
+  current_value: string;
+  cost_basis: string;
+  pnl: string;
+  pnl_percent: string;
+}
+
+export interface AdminTransaction {
+  id: number;
+  type: string;
+  amount: string;
+  status: string;
+  description: string;
+  created_at: string;
+}
+
+export interface AdminUserDetail extends AdminUserSummary {
+  holdings: AdminHolding[];
+  recent_transactions: AdminTransaction[];
+}
+
+// Admin API endpoints
+export const adminApi = {
+  users: (search?: string) =>
+    api.get<AdminUserSummary[]>(`/admin/users/${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+  userDetail: (id: number) => api.get<AdminUserDetail>(`/admin/users/${id}/`),
+  adjustWallet: (id: number, action: "set" | "add" | "subtract", amount: number) =>
+    api.post<{ balance: string }>(`/admin/users/${id}/wallet/`, { action, amount }),
+  updateUser: (id: number, data: Partial<Pick<AdminUserSummary, "first_name" | "last_name" | "email" | "phone" | "country" | "is_active" | "email_verified">>) =>
+    api.patch<AdminUserDetail>(`/admin/users/${id}/profile/`, data),
+  addHolding: (id: number, ticker: string, shares: number, avg_cost: number) =>
+    api.post<AdminHolding>(`/admin/users/${id}/holdings/`, { ticker, shares, avg_cost }),
+  removeHolding: (userId: number, holdingId: number) =>
+    api.delete<void>(`/admin/users/${userId}/holdings/${holdingId}/`),
+};

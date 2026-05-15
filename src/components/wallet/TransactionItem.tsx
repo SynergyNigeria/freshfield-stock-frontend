@@ -2,7 +2,7 @@
 
 import { ArrowDownLeft, ArrowUpRight, ShoppingCart, Package } from "lucide-react";
 import { Transaction } from "@/types";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -69,8 +69,7 @@ export default function TransactionItem({ transaction: txn }: TransactionItemPro
           </span>
         </div>
         <p className="text-xs text-gray-400 mt-0.5">
-          {txn.shares ? `${txn.shares} shares @ ${formatCurrency(txn.pricePerShare!)} · ` : ""}
-          {formatDate(txn.date)}
+          {txn.shares ? `${txn.shares} shares${txn.pricePerShare ? ` @ ${formatCurrency(txn.pricePerShare)}` : ""}` : ""}
         </p>
       </div>
 

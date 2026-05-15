@@ -16,7 +16,7 @@ import {
   ImageIcon,
   Bell,
 } from "lucide-react";
-import { walletApi } from "@/lib/api";
+import { walletApi, ordersApi } from "@/lib/api";
 import { adaptTransaction } from "@/lib/adapters";
 import { Transaction } from "@/types";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -46,6 +46,7 @@ export default function WalletContent() {
   const [copied, setCopied] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [totalInvested, setTotalInvested] = useState(0);
   const [submitLoading, setSubmitLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +55,7 @@ export default function WalletContent() {
   useEffect(() => {
     walletApi.get().then((w) => setWalletBalance(parseFloat(w.balance))).catch(() => {});
     walletApi.transactions().then((txns) => setTransactions(txns.map(adaptTransaction))).catch(() => {});
+    ordersApi.portfolio().then((p) => setTotalInvested(p.summary.total_cost)).catch(() => {});
   }, []);
 
   function openModal(type: ModalType) {
@@ -97,9 +99,6 @@ export default function WalletContent() {
     .reduce((a, t) => a + t.amount, 0);
   const totalWithdrawn = transactions
     .filter((t) => t.type === "withdrawal" && t.status === "completed")
-    .reduce((a, t) => a + t.amount, 0);
-  const totalInvested = transactions
-    .filter((t) => t.type === "buy" && t.status === "completed")
     .reduce((a, t) => a + t.amount, 0);
 
   async function handleDepositSubmit() {
@@ -199,13 +198,20 @@ export default function WalletContent() {
       {/* Transaction history */}
       <Card padding="none">
         <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-900">Transaction History</h2>
-          <span className="text-xs text-gray-400">{transactions.length} transactions</span>
+          <h2 className="text-sm font-bold text-gray-900">Stock Transactions</h2>
+          <span className="text-xs text-gray-400">{transactions.filter((t) => t.type === "buy" || t.type === "sell").length} trades</span>
         </div>
         <div className="divide-y divide-gray-50 px-4">
-          {transactions.slice().reverse().map((txn) => (
-            <TransactionItem key={txn.id} transaction={txn} />
-          ))}
+          {transactions
+            .filter((t) => t.type === "buy" || t.type === "sell")
+            .slice()
+            .reverse()
+            .map((txn) => (
+              <TransactionItem key={txn.id} transaction={txn} />
+            ))}
+          {transactions.filter((t) => t.type === "buy" || t.type === "sell").length === 0 && (
+            <p className="text-xs text-gray-400 py-6 text-center">No stock transactions yet</p>
+          )}
         </div>
       </Card>
 

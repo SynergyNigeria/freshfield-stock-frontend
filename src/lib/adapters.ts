@@ -50,6 +50,7 @@ export function adaptTransaction(t: APITransaction): Transaction {
     amount: parseFloat(t.amount),
     ticker,
     shares,
+    pricePerShare: shares && parseFloat(t.amount) ? parseFloat(t.amount) / shares : undefined,
     date: t.created_at,
     status: t.status,
   };
