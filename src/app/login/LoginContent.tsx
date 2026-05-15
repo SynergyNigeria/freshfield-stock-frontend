@@ -188,7 +188,7 @@ export default function LoginContent() {
                   </p>
                 </div>
                 <p className="text-white/30 text-xs">
-                  During development, the link is printed in the Django console.
+                  Didn&apos;t receive it? Check your spam folder.
                 </p>
                 <button
                   onClick={() => switchMode("login")}
