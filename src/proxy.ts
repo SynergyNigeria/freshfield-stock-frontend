@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+export const runtime = "edge";
+
 const PUBLIC_PATHS = ["/login", "/verify-email", "/admin"];
 
 export function proxy(request: NextRequest) {
