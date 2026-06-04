@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { stocksApi, ordersApi, APIError } from "@/lib/api";
 import { adaptStock } from "@/lib/adapters";
-import { generateChartData } from "@/lib/mockData";
+import { generateChartData, STOCKS } from "@/lib/mockData";
 import { Stock } from "@/types";
 import {
   formatCurrency,
@@ -48,7 +48,12 @@ export default function StockDetailContent({ ticker }: StockDetailContentProps) 
   const [orderLoading, setOrderLoading] = useState(false);
 
   useEffect(() => {
-    stocksApi.detail(ticker).then((s) => setStock(adaptStock(s))).catch(() => {});
+    stocksApi.detail(ticker)
+      .then((s) => setStock(adaptStock(s)))
+      .catch(() => {
+        const mock = STOCKS.find((s) => s.ticker === ticker);
+        if (mock) setStock(mock);
+      });
   }, [ticker]);
 
   if (!stock) return null;

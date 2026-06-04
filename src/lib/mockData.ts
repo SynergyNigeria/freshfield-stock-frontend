@@ -306,6 +306,21 @@ export const STOCKS: Stock[] = [
     sector: "Financials",
     logo: logo("PYPL"),
   },
+  {
+    ticker: "SPACEX",
+    name: "Space Exploration Technologies Corp.",
+    price: 135.0,
+    change: 0,
+    changePercent: 0,
+    volume: "N/A",
+    marketCap: "$350B",
+    high52w: 135.0,
+    low52w: 135.0,
+    pe: 0,
+    dividend: 0,
+    sector: "Aerospace & Defense",
+    logo: "https://logo.clearbit.com/spacex.com",
+  },
 ];
 
 // Generate realistic chart data for a stock

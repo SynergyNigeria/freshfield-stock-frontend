@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { TrendingUp, TrendingDown, ArrowRight, Wallet, BarChart3, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, ArrowRight, Wallet, BarChart3, Activity, Flame, Rocket } from "lucide-react";
 import { stocksApi, walletApi, ordersApi } from "@/lib/api";
 import { adaptStock, adaptHolding } from "@/lib/adapters";
 import { Stock, Holding } from "@/types";
@@ -59,6 +59,9 @@ export default function DashboardContent() {
   const isPortfolioPositive = totalPnL >= 0;
 
   const watchlist = stocks.slice(0, 6);
+
+  const HOT_TICKERS = ["SPACEX", "NVDA", "TSLA", "META"];
+  const hotStocks = HOT_TICKERS.map((t) => stocks.find((s) => s.ticker === t)).filter(Boolean) as typeof stocks;
 
   return (
     <div className="space-y-6">
@@ -158,6 +161,59 @@ export default function DashboardContent() {
           </div>
         </Card>
       </div>
+
+      {/* Hot Stocks */}
+      {hotStocks.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
+                <Flame className="w-3.5 h-3.5 text-orange-500" />
+              </div>
+              <h2 className="text-base font-bold text-gray-900">Hot Stocks</h2>
+            </div>
+            <Link href="/markets">
+              <Button variant="ghost" size="sm" icon={ArrowRight} iconPosition="right">
+                All stocks
+              </Button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {hotStocks.map((stock) => (
+              <Link key={stock.ticker} href={`/stocks/${stock.ticker}`}>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 hover:shadow-md transition-shadow">
+                  {stock.ticker === "SPACEX" && (
+                    <div className="flex items-center gap-1 mb-2">
+                      <Rocket className="w-3 h-3 text-orange-500" />
+                      <span className="text-[10px] font-bold text-orange-500 uppercase tracking-wide">Spotlight</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-100 flex-shrink-0">
+                      <Image
+                        src={stock.logo}
+                        alt={stock.name}
+                        width={32}
+                        height={32}
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-gray-900 leading-tight">{stock.ticker}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{stock.name.split(" ").slice(0, 2).join(" ")}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">{formatCurrency(stock.price)}</p>
+                  <p className={cn("text-[10px] font-semibold", stock.change >= 0 ? "text-green-600" : "text-red-500")}>
+                    {stock.change >= 0 ? "+" : ""}{formatChange(stock.change)} ({formatPercent(stock.changePercent)})
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Watchlist */}
       <div>
