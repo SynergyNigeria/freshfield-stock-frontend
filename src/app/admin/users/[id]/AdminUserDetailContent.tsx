@@ -138,26 +138,26 @@ export default function AdminUserDetailContent({ params }: { params: Promise<{ i
   }
 
   if (loading) return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="h-5 w-32 bg-white/10 rounded animate-pulse mb-6" />
       <div className="h-40 bg-white/5 rounded-2xl animate-pulse" />
     </div>
   );
 
   if (error || !user) return (
-    <div className="p-8 text-white/40">{error ?? "User not found."}</div>
+    <div className="p-4 md:p-8 text-white/40">{error ?? "User not found."}</div>
   );
 
   const portfolioValue = user.holdings.reduce((s, h) => s + parseFloat(h.current_value), 0);
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 md:p-8 max-w-5xl">
       <Link href="/admin/users" className="flex items-center gap-2 text-white/40 hover:text-white text-sm mb-6 transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" /> Back to users
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">{user.first_name} {user.last_name}</h1>
           <p className="text-white/40 text-sm mt-0.5">{user.email} · {user.country || "No country"} · {user.phone || "No phone"}</p>

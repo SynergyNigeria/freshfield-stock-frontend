@@ -3,6 +3,8 @@ import StockDetailContent from "./StockDetailContent";
 import { STOCKS } from "@/lib/mockData";
 import { notFound } from "next/navigation";
 
+export const dynamicParams = true;
+
 interface StockPageProps {
   params: Promise<{ ticker: string }>;
 }

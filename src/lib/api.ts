@@ -243,6 +243,21 @@ export const authApi = {
   logout: (refresh: string) => api.post<void>("/auth/logout/", { refresh }),
 };
 
+export interface APITransferMethod {
+  id: number;
+  method_type: "bank_transfer" | "paypal" | "zelle";
+  method_type_display: string;
+  display_name: string;
+  account_name: string;
+  account_identifier: string;
+  bank_name: string;
+  routing_number: string;
+  reference: string;
+  instructions: string;
+  is_active: boolean;
+  order: number;
+}
+
 // Wallet endpoints
 export const walletApi = {
   get: () => api.get<APIWallet>("/wallet/"),
@@ -255,6 +270,7 @@ export const walletApi = {
     account_name: string;
     routing_number: string;
   }) => api.post<{ id: number }>("/wallet/withdraw/", data),
+  transferMethods: () => api.get<APITransferMethod[]>("/wallet/transfer-methods/"),
 };
 
 // Orders endpoints
@@ -323,4 +339,14 @@ export const adminApi = {
     api.post<AdminHolding>(`/admin/users/${id}/holdings/`, { ticker, shares, avg_cost }),
   removeHolding: (userId: number, holdingId: number) =>
     api.delete<void>(`/admin/users/${userId}/holdings/${holdingId}/`),
+};
+
+// Admin Transfer Methods API
+export const adminTransferMethodsApi = {
+  list: () => api.get<APITransferMethod[]>("/wallet/admin/transfer-methods/"),
+  create: (data: Omit<APITransferMethod, "id" | "method_type_display">) =>
+    api.post<APITransferMethod>("/wallet/admin/transfer-methods/", data),
+  update: (id: number, data: Partial<Omit<APITransferMethod, "id" | "method_type_display">>) =>
+    api.patch<APITransferMethod>(`/wallet/admin/transfer-methods/${id}/`, data),
+  delete: (id: number) => api.delete<void>(`/wallet/admin/transfer-methods/${id}/`),
 };

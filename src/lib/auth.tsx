@@ -8,6 +8,7 @@ import {
   useCallback,
   ReactNode,
 } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   authApi,
   setTokens,
@@ -17,6 +18,8 @@ import {
   APIUser,
   APIError,
 } from "@/lib/api";
+
+const PUBLIC_PATHS = ["/login", "/verify-email", "/admin"];
 
 interface AuthState {
   user: APIUser | null;
@@ -39,6 +42,8 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<APIUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   // On mount, restore session from localStorage
   useEffect(() => {
@@ -58,6 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     restore();
   }, []);
+
+  // Redirect unauthenticated users away from protected pages
+  useEffect(() => {
+    if (!loading && !user && !PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+      router.replace("/login");
+    }
+  }, [loading, user, pathname, router]);
 
   const login = useCallback(async (email: string, password: string) => {
     const tokens = await authApi.login(email, password);

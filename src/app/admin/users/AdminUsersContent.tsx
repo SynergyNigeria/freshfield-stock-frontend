@@ -24,7 +24,7 @@ export default function AdminUsersContent() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h1 className="text-2xl font-bold text-white mb-1">Users</h1>
       <p className="text-white/40 text-sm mb-6">Manage all registered users</p>
 
@@ -43,8 +43,8 @@ export default function AdminUsersContent() {
         </button>
       </form>
 
-      <div className="rounded-2xl border border-white/10 overflow-hidden" style={{ background: "rgba(255,255,255,0.03)" }}>
-        <table className="w-full text-sm">
+      <div className="rounded-2xl border border-white/10 overflow-x-auto" style={{ background: "rgba(255,255,255,0.03)" }}>
+        <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-white/10">
               <th className="text-left px-5 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">User</th>

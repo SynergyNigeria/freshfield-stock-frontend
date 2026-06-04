@@ -15,8 +15,10 @@ import {
   Upload,
   ImageIcon,
   Bell,
+  CreditCard,
+  Smartphone,
 } from "lucide-react";
-import { walletApi, ordersApi } from "@/lib/api";
+import { walletApi, ordersApi, APITransferMethod } from "@/lib/api";
 import { adaptTransaction } from "@/lib/adapters";
 import { Transaction } from "@/types";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -25,7 +27,7 @@ import Card from "@/components/ui/Card";
 import TransactionItem from "@/components/wallet/TransactionItem";
 
 type ModalType = "deposit" | "withdraw" | null;
-type DepositStep = "amount" | "bank-details" | "pending";
+type DepositStep = "amount" | "method" | "bank-details" | "pending";
 type WithdrawStep = "input" | "confirm" | "success";
 
 const BANK_DETAILS = {
@@ -34,6 +36,12 @@ const BANK_DETAILS = {
   accountNumber: "4892 0371 6654",
   routingNumber: "021000021",
   reference: "FLD-DEPOSIT",
+};
+
+const METHOD_ICONS: Record<string, React.ElementType> = {
+  bank_transfer: Building2,
+  paypal: CreditCard,
+  zelle: Smartphone,
 };
 
 export default function WalletContent() {
@@ -48,6 +56,8 @@ export default function WalletContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totalInvested, setTotalInvested] = useState(0);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [transferMethods, setTransferMethods] = useState<APITransferMethod[]>([]);
+  const [selectedMethod, setSelectedMethod] = useState<APITransferMethod | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const amountNum = parseFloat(amount) || 0;
@@ -56,6 +66,7 @@ export default function WalletContent() {
     walletApi.get().then((w) => setWalletBalance(parseFloat(w.balance))).catch(() => {});
     walletApi.transactions().then((txns) => setTransactions(txns.map(adaptTransaction))).catch(() => {});
     ordersApi.portfolio().then((p) => setTotalInvested(p.summary.total_cost)).catch(() => {});
+    walletApi.transferMethods().then(setTransferMethods).catch(() => {});
   }, []);
 
   function openModal(type: ModalType) {
@@ -65,6 +76,7 @@ export default function WalletContent() {
     setWithdrawStep("input");
     setProofFile(null);
     setProofPreview(null);
+    setSelectedMethod(null);
   }
 
   function handleClose() {
@@ -74,6 +86,7 @@ export default function WalletContent() {
     setWithdrawStep("input");
     setProofFile(null);
     setProofPreview(null);
+    setSelectedMethod(null);
   }
 
   function copyToClipboard(text: string, key: string) {
@@ -108,13 +121,12 @@ export default function WalletContent() {
       const fd = new FormData();
       fd.append("amount", String(amountNum));
       fd.append("proof_image", proofFile);
+      if (selectedMethod) fd.append("transfer_method_id", String(selectedMethod.id));
       await walletApi.deposit(fd);
-      // Refresh transactions
       const txns = await walletApi.transactions();
       setTransactions(txns.map(adaptTransaction));
       setDepositStep("pending");
     } catch {
-      // Still show pending on error for UX
       setDepositStep("pending");
     } finally {
       setSubmitLoading(false);
@@ -230,7 +242,7 @@ export default function WalletContent() {
                   <div className="flex-shrink-0 px-6 pt-4 pb-2">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        {depositStep === "bank-details" && (
+                        {depositStep === "method" && (
                           <button
                             onClick={() => setDepositStep("amount")}
                             className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors"
@@ -238,8 +250,16 @@ export default function WalletContent() {
                             <ChevronLeft className="w-4 h-4" />
                           </button>
                         )}
+                        {depositStep === "bank-details" && (
+                          <button
+                            onClick={() => setDepositStep(transferMethods.length > 0 ? "method" : "amount")}
+                            className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                        )}
                         <h3 className="text-lg font-bold text-gray-900">
-                          {depositStep === "amount" ? "Deposit Funds" : "Bank Transfer"}
+                          {depositStep === "amount" ? "Deposit Funds" : depositStep === "method" ? "Choose Method" : "Transfer Details"}
                         </h3>
                       </div>
                       <button
@@ -251,12 +271,12 @@ export default function WalletContent() {
                     </div>
                     {/* Step dots */}
                     <div className="flex items-center gap-1.5">
-                      {["amount", "bank-details"].map((s, i) => (
+                      {["amount", ...(transferMethods.length > 0 ? ["method"] : []), "bank-details"].map((s, i, arr) => (
                         <div
                           key={s}
                           className={cn(
                             "h-1.5 rounded-full transition-all",
-                            depositStep === s ? "w-6 bg-green-600" : i < ["amount", "bank-details"].indexOf(depositStep) ? "w-3 bg-green-300" : "w-3 bg-gray-200"
+                            depositStep === s ? "w-6 bg-green-600" : i < arr.indexOf(depositStep) ? "w-3 bg-green-300" : "w-3 bg-gray-200"
                           )}
                         />
                       ))}
@@ -308,7 +328,9 @@ export default function WalletContent() {
                           <Building2 className="w-4 h-4 text-green-700" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900">Bank Transfer</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {transferMethods.length > 0 ? `${transferMethods.length} method${transferMethods.length > 1 ? "s" : ""} available` : "Bank Transfer"}
+                          </p>
                           <p className="text-xs text-gray-400">Verified within 24 hours</p>
                         </div>
                         <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
@@ -316,14 +338,58 @@ export default function WalletContent() {
                         </div>
                       </div>
 
-                      <Button fullWidth size="lg" disabled={amountNum <= 0} onClick={() => setDepositStep("bank-details")}>
+                      <Button fullWidth size="lg" disabled={amountNum <= 0} onClick={() => setDepositStep(transferMethods.length > 0 ? "method" : "bank-details")}>
                         Continue
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
                   )}
 
-                  {/* ── Step 2: Bank Details + Proof Upload ── */}
+                  {/* ── Step 2: Choose Method ── */}
+                  {depositStep === "method" && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-500">Select how you will send your payment:</p>
+                      {transferMethods.map((method) => {
+                        const Icon = METHOD_ICONS[method.method_type] ?? Building2;
+                        const isSelected = selectedMethod?.id === method.id;
+                        return (
+                          <button
+                            key={method.id}
+                            onClick={() => setSelectedMethod(method)}
+                            className={cn(
+                              "w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all",
+                              isSelected
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 bg-white hover:border-gray-300"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                              isSelected ? "bg-green-100" : "bg-gray-100"
+                            )}>
+                              <Icon className={cn("w-5 h-5", isSelected ? "text-green-700" : "text-gray-500")} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-gray-900">{method.display_name}</p>
+                              <p className="text-xs text-gray-400">{method.method_type_display} · {method.account_identifier}</p>
+                            </div>
+                            <div className={cn(
+                              "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                              isSelected ? "border-green-500 bg-green-500" : "border-gray-300"
+                            )}>
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <Button fullWidth size="lg" disabled={!selectedMethod} onClick={() => setDepositStep("bank-details")}>
+                        Continue
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* ── Step 3: Account Details + Proof Upload ── */}
                   {depositStep === "bank-details" && (
                     <div className="space-y-4">
                       {/* Amount summary */}
@@ -332,20 +398,28 @@ export default function WalletContent() {
                         <span className="text-lg font-bold text-green-700">{formatCurrency(amountNum)}</span>
                       </div>
 
-                      {/* Bank details card */}
+                      {/* Account details card */}
                       <div className="rounded-2xl border border-gray-200 overflow-hidden">
                         <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-200">
                           <Building2 className="w-4 h-4 text-gray-500" />
-                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Account Details</p>
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            {selectedMethod ? selectedMethod.display_name : "Account Details"}
+                          </p>
                         </div>
                         <div className="divide-y divide-gray-100">
-                          {[
+                          {(selectedMethod ? [
+                            ...(selectedMethod.bank_name ? [{ label: "Bank Name", value: selectedMethod.bank_name, key: "bank" }] : []),
+                            { label: "Account Name", value: selectedMethod.account_name, key: "name" },
+                            { label: selectedMethod.method_type === "bank_transfer" ? "Account Number" : "Account / Email", value: selectedMethod.account_identifier, key: "identifier" },
+                            ...(selectedMethod.routing_number ? [{ label: "Routing Number", value: selectedMethod.routing_number, key: "routing" }] : []),
+                            ...(selectedMethod.reference ? [{ label: "Reference", value: selectedMethod.reference, key: "ref" }] : []),
+                          ] : [
                             { label: "Bank Name", value: BANK_DETAILS.bankName, key: "bank" },
                             { label: "Account Name", value: BANK_DETAILS.accountName, key: "name" },
                             { label: "Account Number", value: BANK_DETAILS.accountNumber, key: "account" },
                             { label: "Routing Number", value: BANK_DETAILS.routingNumber, key: "routing" },
                             { label: "Reference", value: BANK_DETAILS.reference, key: "ref" },
-                          ].map(({ label, value, key }) => (
+                          ]).map(({ label, value, key }) => (
                             <div key={key} className="flex items-center justify-between px-4 py-3">
                               <div>
                                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
@@ -367,6 +441,12 @@ export default function WalletContent() {
                         </div>
                       </div>
 
+                      {/* Extra instructions */}
+                      {selectedMethod?.instructions && (
+                        <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                          <p className="text-xs font-medium text-amber-700">{selectedMethod.instructions}</p>
+                        </div>
+                      )}
                       {/* Proof upload */}
                       <div>
                         <p className="text-sm font-medium text-gray-700 mb-1.5">Upload payment proof</p>
@@ -420,7 +500,7 @@ export default function WalletContent() {
                         {submitLoading ? "Submitting…" : "I've Made the Payment"}
                       </Button>
                       <p className="text-center text-xs text-gray-400">
-                        Only submit after completing the bank transfer
+                        Only submit after completing the transfer
                       </p>
                     </div>
                   )}
