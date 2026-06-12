@@ -226,8 +226,8 @@ export const stocksApi = {
 
 // Auth endpoints
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post<{ access: string; refresh: string }>("/auth/login/", { email, password }),
+  login: (login: string, password: string) =>
+    api.post<{ access: string; refresh: string }>("/auth/login/", { login, password }),
   register: (data: {
     email: string;
     first_name: string;

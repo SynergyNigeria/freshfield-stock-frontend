@@ -309,17 +309,17 @@ export const STOCKS: Stock[] = [
   {
     ticker: "SPACEX",
     name: "Space Exploration Technologies Corp.",
-    price: 135.0,
+    price: 161.11,
     change: 0,
     changePercent: 0,
     volume: "N/A",
     marketCap: "$350B",
-    high52w: 135.0,
+    high52w: 161.11,
     low52w: 135.0,
     pe: 0,
     dividend: 0,
     sector: "Aerospace & Defense",
-    logo: "https://logo.clearbit.com/spacex.com",
+    logo: "/spacex.svg",
   },
 ];
 

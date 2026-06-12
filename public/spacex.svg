@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SpaceX">
+  <rect width="64" height="64" rx="14" fill="#05070a"/>
+  <path d="M10 35c13-11 28-17 45-18-16 5-29 12-40 22l-5-4z" fill="#f5f7fb"/>
+  <path d="M11 43h8l5-7 5 7h8l-9-12 8-10h-8l-4 6-4-6h-8l8 10-9 12z" fill="#f5f7fb"/>
+  <path d="M39 43h14v-6H39v6z" fill="#f5f7fb"/>
+  <path d="M40 21h12v5H40v-5z" fill="#f5f7fb"/>
+</svg>

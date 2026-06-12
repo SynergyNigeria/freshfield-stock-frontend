@@ -24,7 +24,7 @@ const PUBLIC_PATHS = ["/login", "/verify-email", "/admin"];
 interface AuthState {
   user: APIUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (login: string, password: string) => Promise<void>;
   register: (data: {
     email: string;
     first_name: string;
@@ -71,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loading, user, pathname, router]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const tokens = await authApi.login(email, password);
+  const login = useCallback(async (login: string, password: string) => {
+    const tokens = await authApi.login(login, password);
     setTokens(tokens.access, tokens.refresh);
     const profile = await authApi.profile();
     setUser(profile);

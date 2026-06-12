@@ -244,17 +244,17 @@ export default function LoginContent() {
                     </div>
                   )}
 
-                  {/* Email */}
+                  {/* Email / ID */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-                      Email address
+                      {mode === "login" ? "Email or user ID" : "Email address"}
                     </label>
                     <input
-                      type="email"
+                      type={mode === "login" ? "text" : "email"}
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder={mode === "login" ? "you@example.com or 1024" : "you@example.com"}
                       className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all"
                       style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#06d001")}
